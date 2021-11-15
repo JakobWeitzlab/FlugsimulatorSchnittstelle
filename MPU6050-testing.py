@@ -21,8 +21,11 @@ def WakeUp():
             bus.write_byte_data(adress, POWER_MANAGEMENT_1, data)
     return logging.info("MPU Wake up call")
 
-def RegisterRead():
-    return
+def RegisterRead(Register_H, Register_L):
+    h = bus.read_byte_data(adress, Register_H)
+    l = bus.read_byte_data(adress, Register_L)
+    value = (h << 8) + l
+    return value
 
 def Offset_X():
     return
