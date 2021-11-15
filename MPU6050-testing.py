@@ -12,7 +12,6 @@ GYRO_XOUT_L = 0x44
 def Initialisierung():
     #logging Library init
     logging.basicConfig(level=logging.INFO) #Configure Logging Level
-
     return print("init abgeschlossen.")
 
 def WakeUp():
@@ -21,53 +20,44 @@ def WakeUp():
             bus.write_byte_data(adress, POWER_MANAGEMENT_1, data)
     return logging.info("MPU Wake up call")
 
+#Read determinated Register
 def RegisterRead(Register_H, Register_L):
-    h = bus.read_byte_data(adress, Register_H)
-    l = bus.read_byte_data(adress, Register_L)
+    h = SMBus(1).read_byte_data(adress, Register_H)
+    l = SMBus(1).read_byte_data(adress, Register_L)
     value = (h << 8) + l
     return value
 
+#Calculate Offset X
 def Offset_X():
-    return
-
-
-nullpunkt_X = 0
-binary_x = 0
-
-'''
-#Wake up
-with SMBus(1) as bus:
-            data = 0x00
-            bus.write_byte_data(adress, POWER_MANAGEMENT_1, data)
-            logging.info("MPU Wake up call")
-'''
-
-gyro_x_5sek = [49]
-y = 0
-
-#Read Gyro data and determen x-offset
-while y == 0:
-    try:
-        WakeUp()
-        bus = SMBus(1)
-
-        for i in range(0,10000):
-            h = bus.read_byte_data(adress, GYRO_XOUT_H)
-            l = bus.read_byte_data(adress, GYRO_XOUT_L)
-            value = (h << 8) + l
-
+    bus = SMBus(1)
+    gyro_x_5sek = []
+    for i in range(0,1000):
+            value = RegisterRead(GYRO_XOUT_H,GYRO_XOUT_L)
+            
             if (value >= 32768):
                 int_x = -((65535 - value) + 1)
             else:
                 int_x = value
 
             gyro_x_5sek.append(int_x)
-        
-        print("Mittelwert von X-Achse", np.mean(gyro_x_5sek))
-        bus.close()
-        time.sleep(0.1)
+            time.sleep(0.001)
+    bus.close()
+    return print("Mittelwert von X-Achse", np.mean(gyro_x_5sek))
 
-        y = 1
-    except OSError:
-        print("Kabel ausa zogen")
-        time.sleep(2)
+
+def Rotation_x():
+    value = Offset_X()
+    rotation -= value
+    return
+
+
+#MAIN
+try:
+    #WakeUp()
+    Offset_X()
+    print("try")
+
+except OSError:
+    print("Kabel ausa zogen")
+    time.sleep(2)
+    
