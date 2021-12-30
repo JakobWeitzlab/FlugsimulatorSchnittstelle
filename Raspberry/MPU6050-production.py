@@ -2,20 +2,20 @@ from smbus2 import SMBus
 import time
 import logging
 import math
-
 # import numpy as np
 
 # Adressbereiche
 adress = 0x68
 POWER_MANAGEMENT_1 = 0x6B
-GYRO_XOUT_H = 0x43
-GYRO_XOUT_L = 0x44
+# GYRO_XOUT_H = 0x43
+# GYRO_XOUT_L = 0x44
+
 ACCEL_XOUT_H = 0x3B
-ACCEL_XOUT_L = 0x3C
+# ACCEL_XOUT_L = 0x3C
 ACCEL_YOUT_H = 0x3D
-ACCEL_YOUT_L = 0x3E
+# ACCEL_YOUT_L = 0x3E
 ACCEL_ZOUT_H = 0x3F
-ACCEL_ZOUT_L = 0x40
+# ACCEL_ZOUT_L = 0x40
 
 
 class MPU():
@@ -44,9 +44,9 @@ class MPU():
         return logging.info("Data writte")
 
     def _Acc(self):
-        valueX = self._RegisterRead(ACCEL_XOUT_H, ACCEL_XOUT_L)
-        valueY = self._RegisterRead(ACCEL_YOUT_H, ACCEL_YOUT_L)
-        valueZ = self._RegisterRead(ACCEL_ZOUT_H, ACCEL_ZOUT_L)
+        valueX = self._RegisterRead(ACCEL_XOUT_H, ACCEL_XOUT_H + 1)
+        valueY = self._RegisterRead(ACCEL_YOUT_H, ACCELf_YOUT_H + 1)
+        valueZ = self._RegisterRead(ACCEL_ZOUT_H, ACCEL_ZOUT_H + 1)
         return valueX, valueY, valueZ
 
     def _distance(self, value1, valueZ):
@@ -56,22 +56,22 @@ class MPU():
     def _Rotation_x(self):
         valueX, valueY, valueZ = self._Acc()
         
-        yaw = math.atan2(valueY, self._distance(valueX, valueZ))
-        return math.degrees(yaw)
+        roll = math.atan2(valueY, self._distance(valueX, valueZ))
+        return math.degrees(roll)
 
     def _Rotation_y(self):
         valueX, valueY, valueZ = self._Acc()
 
-        roll = math.atan2(valueX, self._distance(valueY, valueZ))
-        return -math.degrees(roll)
+        pitch = math.atan2(valueX, self._distance(valueY, valueZ))
+        return -math.degrees(pitch)
 
     def loop(self):
         '''Execute the Main loop'''
 
         self._running = True
         while self._running:
-            print("x rotation ", self._Rotation_x())
-            # print("Y rotation ", self._Rotation_y())
+            print("X rotation ", self._Rotation_x())
+            print("Y rotation ", self._Rotation_y())
             time.sleep(0.1)
 
 
