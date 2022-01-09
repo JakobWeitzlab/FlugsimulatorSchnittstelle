@@ -99,14 +99,13 @@ class Wifi():
     self.mpu = MPU()
     self.mpu._WakeUp()
     
-    while False:
+    while True:
       self.SendData()
       #self.mpu._Acc()    
       
          
 #Execut the Main function    
 def main():
-  return
   machine.freq(160000000)
   print(machine.freq())
   wifi = Wifi()
