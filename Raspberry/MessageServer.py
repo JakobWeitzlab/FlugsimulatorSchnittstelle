@@ -36,7 +36,7 @@ class Server(QRunnable):
         self.stautsSeiten = False
         self.stautsQuer = False
 
-        self.offseteSeiten = 0
+        self.offsetSeiten = 0
         self.offsetHoehen = 0
         self.offsetQuer = 0
 
@@ -47,27 +47,34 @@ class Server(QRunnable):
         self.messageCountSeiten = 0
         self.messageCountQuer = 0
 
+        self.BatteryStatusHoehen = 0
+        self.BatteryStatusSeiten = 0
+        self.BatteryStatusQuer = 0
+
         self.handshakeCount = 0
 
+        self.statusJoystick = False
+
         self.HandleSchedule()
-        # self.Handshake()
-        # self.SensorCalibration()
+        self.Handshake()
+        
         # self.ClientStatus()
         # self.ClientHandshake()
         
     def HandleSchedule(self):
         # ======Handle schedule====== #
         schedule.every(2).seconds.do(self.CountInputPackage)  # Count input packages
-        # schedule.every(1.1).seconds.do(self.ClearInputPackage)
         schedule.every(10).seconds.do(self.ClientStatus)  # Handle Client Status
+        # schedule.every(2).seconds.do(self.ClientStatus)
 
     def SensorCalibration(self):
+        mutex.lock()
         oldTime = time.time()
         arrHoehen = []
         arrSeiten = []
         arrQuer = []
 
-        self.offseteSeiten = 0
+        self.offsetSeiten = 0
         self.offsetHoehen = 0
         self.offsetQuer = 0
 
@@ -80,26 +87,32 @@ class Server(QRunnable):
             arrQuer.append(self.WinkelQuer)
 
         self.offsetHoehen = numpy.mean(arrHoehen)
-        self.offseteSeiten = numpy.mean(arrSeiten)
+        self.offsetSeiten = numpy.mean(arrSeiten)
         self.offsetQuer = numpy.mean(arrQuer)
-        print("Kalibrierung erfolgreich")
-        print(str(self.offseteSeiten) + " " + str(90-self.offsetHoehen) + " " + str(self.offsetQuer))
+        self.signals.finishedOffset.emit()
+        mutex.unlock()
+        # print("Kalibrierung erfolgreich")
+        # print(str(self.offsetSeiten) + " " + str(90-self.offsetHoehen) + " " + str(self.offsetQuer))
 
     def ClientStatus(self):
+        mutex.lock()
         if self.messageCountHoehen > 0:
             self.statusHoehen = True
         else:
             self.statusHoehen = False
 
         if self.messageCountSeiten > 0:
-            self.stautsSeiten = True
+            self.statusSeiten = True
         else:
-            self.stautsSeiten = False
+            self.statusSeiten = False
 
         if self.messageCountQuer > 0:
-            self.stautsQuer = True
+            self.statusQuer = True
         else:
-            self.stautsQuer = False
+            self.statusQuer = False
+        time.sleep(0.1)
+        self.signals.statusClient.emit()
+        mutex.unlock()
 
     def Handshake(self):
         while self.JoystickHandshake() != True:
@@ -126,6 +139,8 @@ class Server(QRunnable):
         while foo != "03":
             for addr in self.ScanForI2C(force=True):
                 foo = '{:02X}'.format(addr)
+        self.signals.statusJoystick.emit()
+        self.statusJoystick = True
         return True
 
         # if self._running == True:
@@ -185,10 +200,10 @@ class Server(QRunnable):
     def Seitenruder(self, x, y, z):
         self.posNegSeit = 0x5F
         foo = math.atan2(y, self.Distance(x, z))
-        self.WinkelSeit = math.degrees(foo) - self.offseteSeiten
-        if (self.WinkelSeit - self.offseteSeiten < 0):
+        self.WinkelSeit = math.degrees(foo) - self.offsetSeiten
+        if (self.WinkelSeit - self.offsetSeiten < 0):
             self.posNegSeit = 0x60
-            self.WinkelSeit = 90-(self.WinkelSeit * -1) + self.offseteSeiten
+            self.WinkelSeit = 90-(self.WinkelSeit * -1) + self.offsetSeiten
         self.messageCountSeiten += 1
         return
 
@@ -218,13 +233,16 @@ class Server(QRunnable):
         
     def CountInputPackage(self):
         mutex.lock()
-        print(str(self.messageCountHoehen) + " Hoehenruder messages/s")
-        print(str(self.messageCountSeiten) + " Seitenruder messages/s")
-        print(str(self.messageCountQuer) + " Querruder messages/s")
-        self.signals.finished.emit()
+        # print(str(self.messageCountHoehen) + " Hoehenruder messages/s")
+        # print(str(self.messageCountSeiten) + " Seitenruder messages/s")
+        # print(str(self.messageCountQuer) + " Querruder messages/s")
+        self.messageCountHoehen
+        self.messageCountSeiten
+        self.messageCountQuer
+        self.signals.finishedMessageCount.emit()
         mutex.unlock()
 
-        time.sleep(1)
+        time.sleep(0.01)
         self.messageCountHoehen = 0
         self.messageCountSeiten = 0
         self.messageCountQuer = 0
@@ -232,6 +250,30 @@ class Server(QRunnable):
     
     @pyqtSlot()   
     def run(self):
+        arr = [10,11,12]
+        print("receiving")
+        while len(arr) != 1:
+            data, self.addr = self.Receive()
+            add = self.ConvertTuple(self.addr)
+            self.values = data.decode('UTF-8').split(" ")
+
+            if add == 10 and len(self.values) <= 2:
+                self.BatteryStatusHoehen = self.values[0]
+                arr.pop(arr.index(10))
+                self.signals.statusBattery.emit()
+                print("received 10")
+            if add == 11 and len(self.values) <= 2:
+                self.BatteryStatusSeiten = self.values[0]
+                arr.pop(arr.index(11))
+                self.signals.statusBattery.emit()
+                print("received 11")
+            if add == 12 and len(self.values) <= 2:
+                self.BatteryStatusQuer = self.values[0]
+                arr.pop(arr.index(12))
+                self.signals.statusBattery.emit()
+                print("received 12")
+        self.SensorCalibration()
+
         while self._running:
             try:
                 # print("looping")
@@ -240,7 +282,7 @@ class Server(QRunnable):
                 data, self.addr = self.Receive()
                 self.values = data.decode('UTF-8').split(" ")
                 self.Select()
-                # self.ProMicro()
+                self.ProMicro()
                 # time.sleep(0.2)
 
             except KeyboardInterrupt:
@@ -248,10 +290,14 @@ class Server(QRunnable):
                 sys.exit()
             except:
                 pass
-            # time.sleep(0.2)
+            
 
 class ServerSignals(QObject):
-    finished = pyqtSignal()
+    finishedMessageCount = pyqtSignal()
+    finishedOffset = pyqtSignal()
+    statusClient  = pyqtSignal()
+    statusBattery = pyqtSignal()
+    statusJoystick = pyqtSignal()
 
 def main():
     server = Server()
