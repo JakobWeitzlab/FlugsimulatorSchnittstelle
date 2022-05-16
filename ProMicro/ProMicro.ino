@@ -22,6 +22,9 @@ void setup() {
   Wire.begin(0x03);
   Wire.onReceive(ReceiveEvent);  //register event
   Serial.begin(9600); //starts a serial connection at 9600bps
+  Joystick.setYAxisRange(69,111);
+  Joystick.setXAxisRange(69,111);
+  Joystick.setRudderRange(69,111);
   
 }
 
@@ -60,37 +63,36 @@ void ReceiveEvent(int howMany){
     if (identifier == 0x5B)
     {
       degree = Wire.read();
-      Joystick.setXAxis(511.5 + (degree*5.68));
-      Serial.println(degree);
+      Joystick.setXAxis(90 + degree);
     }
     else if(identifier == 0x5C)
     {
       degree = Wire.read();
-      Joystick.setXAxis(degree*5.68);
-      Serial.println(degree);
+      Joystick.setXAxis(90 - degree);
     }    
+    //Querruder
     else if(identifier == 0x5D)
     {
       degree = Wire.read();
-      Joystick.setYAxis(511.5 + (degree*5.68));
-    }
+      Joystick.setYAxis(90 + degree);
+      }
     else if(identifier == 0x5E)
     {
       degree = Wire.read();
-      Joystick.setYAxis(degree*5.68);
+      Joystick.setYAxis(90 - degree);
     }
     else if(identifier == 0x5F)
     {
       degree = Wire.read();
-      Joystick.setRudder(511.5 + (degree*5.68));
+      Joystick.setRudder(90 + degree);
     }
     else if(identifier == 0x60)
     {
       degree = Wire.read();
-      Joystick.setRudder(degree*5.68);
+      Joystick.setRudder(90 - degree);
     }
     
   }
-      delay(100);
+      //delay(100);
       //SelectType(select, degree);
 }
