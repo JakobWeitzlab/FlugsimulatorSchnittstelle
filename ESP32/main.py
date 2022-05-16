@@ -42,7 +42,7 @@ class BMS():
         oldTime = time.time()
         arr = []
         foo = 0
-        while oldTime > time.time() - 1:
+        while oldTime > time.time() - 2:
             arr.append(self.measure.read())
         arrlen = len(arr)
         for x in arr:
@@ -133,6 +133,7 @@ class Wifi:
         self.s.sendto(self.mpu._Acc(), (host, port))            # send data
     
     def loop(self):
+        time.sleep(0.1)
         battMeasurement = self.bms.Measure()
         self.s.sendto(battMeasurement, (host, port))
 
