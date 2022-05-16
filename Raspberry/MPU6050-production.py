@@ -36,7 +36,6 @@ class MPU():
         high = SMBus(1).read_byte_data(adress, Register_H)
         low = SMBus(1).read_byte_data(adress, Register_L)
         value = (high << 8) + low
-        
         return value
 
     def _RegisterWrite(self, Register, Data):
@@ -45,7 +44,7 @@ class MPU():
 
     def _Acc(self):
         valueX = self._RegisterRead(ACCEL_XOUT_H, ACCEL_XOUT_H + 1)
-        valueY = self._RegisterRead(ACCEL_YOUT_H, ACCELf_YOUT_H + 1)
+        valueY = self._RegisterRead(ACCEL_YOUT_H, ACCEL_YOUT_H + 1)
         valueZ = self._RegisterRead(ACCEL_ZOUT_H, ACCEL_ZOUT_H + 1)
         return valueX, valueY, valueZ
 
@@ -71,7 +70,9 @@ class MPU():
         self._running = True
         while self._running:
             print("X rotation ", self._Rotation_x())
-            print("Y rotation ", self._Rotation_y())
+            # print("Y rotation ", self._Rotation_y())
+
+            print("ACC " + str(self._Acc()))
             time.sleep(0.1)
 
 

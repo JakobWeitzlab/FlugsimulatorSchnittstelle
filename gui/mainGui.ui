@@ -43,7 +43,7 @@
       <rect>
        <x>20</x>
        <y>10</y>
-       <width>81</width>
+       <width>101</width>
        <height>61</height>
       </rect>
      </property>
@@ -65,8 +65,8 @@
     <widget class="QLabel" name="label_2">
      <property name="geometry">
       <rect>
-       <x>100</x>
-       <y>30</y>
+       <x>120</x>
+       <y>40</y>
        <width>47</width>
        <height>21</height>
       </rect>
@@ -126,7 +126,7 @@ font: 75 12pt &quot;LEMON MILK Bold&quot;;</string>
        <rect>
         <x>0</x>
         <y>0</y>
-        <width>151</width>
+        <width>152</width>
         <height>241</height>
        </rect>
       </property>
@@ -200,7 +200,7 @@ font: 75 12pt &quot;LEMON MILK Bold&quot;;</string>
        <x>10</x>
        <y>10</y>
        <width>831</width>
-       <height>151</height>
+       <height>158</height>
       </rect>
      </property>
      <layout class="QHBoxLayout" name="Modul">
