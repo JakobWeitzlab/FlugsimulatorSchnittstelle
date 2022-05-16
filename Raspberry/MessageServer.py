@@ -1,14 +1,16 @@
+#!/bin/python3.7
 # ======import librarys======#
 import sys
 import socket
 import time
 import math
-import threading
+from traceback import print_list
+# import threading
 # from functools import partial
 
 # ======import external librarys====== #
-from smbus2 import SMBus
 import schedule
+from smbus2 import SMBus
 import numpy
 from PyQt5.QtCore import *
 
@@ -68,6 +70,7 @@ class Server(QRunnable):
         # schedule.every(2).seconds.do(self.ClientStatus)
 
     def SensorCalibration(self):
+        print("attempt to calibrate")
         mutex.lock()
         oldTime = time.time()
         arrHoehen = []
@@ -78,20 +81,22 @@ class Server(QRunnable):
         self.offsetHoehen = 0
         self.offsetQuer = 0
 
-        while oldTime > time.time() - 5:
+        while oldTime > time.time() - 3:
             data, self.addr = self.Receive()
             self.values = data.decode('UTF-8').split(" ")
             self.Select()
             arrHoehen.append(self.WinkelHoehen)
             arrSeiten.append(self.WinkelSeit)
             arrQuer.append(self.WinkelQuer)
-
+        # print(arrSeiten)
         self.offsetHoehen = numpy.mean(arrHoehen)
         self.offsetSeiten = numpy.mean(arrSeiten)
         self.offsetQuer = numpy.mean(arrQuer)
+        # print(self.offsetSeiten)
         self.signals.finishedOffset.emit()
+        time.sleep(0.01)
         mutex.unlock()
-        # print("Kalibrierung erfolgreich")
+        print("Kalibrierung erfolgreich")
         # print(str(self.offsetSeiten) + " " + str(90-self.offsetHoehen) + " " + str(self.offsetQuer))
 
     def ClientStatus(self):
@@ -180,31 +185,44 @@ class Server(QRunnable):
     def Höhenruder(self, x, y, z):
         self.posNegHoehen = 0x5B
         foo = math.atan2(y, self.Distance(x, z))
-        self.WinkelHoehen = math.degrees(foo) - self.offsetHoehen
+        self.WinkelHoehen = math.degrees(foo)
+
         if (self.WinkelHoehen - self.offsetHoehen < 0):
             self.posNegHoehen = 0x5C
-            self.WinkelHoehen = (90-(self.WinkelHoehen * -1)) + self.offsetHoehen
+            self.WinkelHoehen = numpy.abs(self.WinkelHoehen - self.offsetHoehen)
+        else:
+            self.WinkelHoehen = numpy.abs(self.WinkelHoehen - self.offsetHoehen)
         self.messageCountHoehen += 1
-        return 
+        return  
 
     def Querruder(self, x, y, z):
         self.posNegQuer = 0x5D
         foo = math.atan2(y, self.Distance(x, z))
-        self.WinkelQuer = math.degrees(foo) - self.offsetQuer
-        if (self.WinkelQuer - self.offsetQuer< 0):
+        self.WinkelQuer = math.degrees(foo)
+
+        if (self.WinkelQuer - self.offsetQuer < 0):
             self.posNegQuer = 0x5E
-            self.WinkelQuer = 90-(self.WinkelQuer * -1) + self.offsetQuer
+            self.WinkelQuer = numpy.abs(self.WinkelQuer - self.offsetQuer)
+        else:
+            self.WinkelQuer = numpy.abs(self.WinkelQuer - self.offsetQuer)
         self.messageCountQuer += 1
         return
 
     def Seitenruder(self, x, y, z):
         self.posNegSeit = 0x5F
-        foo = math.atan2(y, self.Distance(x, z))
-        self.WinkelSeit = math.degrees(foo) - self.offsetSeiten
+        foo = math.atan2(x, self.Distance(y, z))
+        self.WinkelSeit = math.degrees(foo)
+
         if (self.WinkelSeit - self.offsetSeiten < 0):
             self.posNegSeit = 0x60
-            self.WinkelSeit = 90-(self.WinkelSeit * -1) + self.offsetSeiten
+            self.WinkelSeit = numpy.abs(self.WinkelSeit - self.offsetSeiten)
+        else:
+            self.WinkelSeit = numpy.abs(self.WinkelSeit - self.offsetSeiten)
         self.messageCountSeiten += 1
+        
+        # print("Winkel " + str(math.degrees(foo)))
+        # print("offset " + str(self.offsetSeiten))
+        # print("richtiger Winkel " + str(self.WinkelSeit))
         return
 
     def Select(self):
@@ -240,40 +258,57 @@ class Server(QRunnable):
         self.messageCountSeiten
         self.messageCountQuer
         self.signals.finishedMessageCount.emit()
+        time.sleep(0.01)
         mutex.unlock()
 
-        time.sleep(0.01)
+        
         self.messageCountHoehen = 0
         self.messageCountSeiten = 0
         self.messageCountQuer = 0
         return
+
+    def BatteryStatusConversion(self, v):
+        # foo = (float(v) * 4095) / 3.3
+        foo = float(v)
+        print(foo)
+        if foo > 2400:
+            return "Batterie: 100"
+        if foo > 2326:
+            return "Batterie: >50"
+        if foo > 2210:
+            return "Batterie: 25"
+        if foo < 2093:
+            return "Batterie: <25"
     
     @pyqtSlot()   
     def run(self):
+        # Battery
         arr = [10,11,12]
         print("receiving")
-        while len(arr) != 1:
+        while len(arr) != 0:
             data, self.addr = self.Receive()
             add = self.ConvertTuple(self.addr)
             self.values = data.decode('UTF-8').split(" ")
-
+            
             if add == 10 and len(self.values) <= 2:
-                self.BatteryStatusHoehen = self.values[0]
+                self.BatteryStatusHoehen = self.BatteryStatusConversion(self.values[0])
                 arr.pop(arr.index(10))
                 self.signals.statusBattery.emit()
                 print("received 10")
             if add == 11 and len(self.values) <= 2:
-                self.BatteryStatusSeiten = self.values[0]
+                # self.BatteryStatusSeiten = self.values[0]
+                self.BatteryStatusQuer = self.BatteryStatusConversion(self.values[0])
                 arr.pop(arr.index(11))
                 self.signals.statusBattery.emit()
                 print("received 11")
             if add == 12 and len(self.values) <= 2:
-                self.BatteryStatusQuer = self.values[0]
+                self.BatteryStatusSeiten = self.BatteryStatusConversion(self.values[0])
                 arr.pop(arr.index(12))
                 self.signals.statusBattery.emit()
                 print("received 12")
         self.SensorCalibration()
-
+        
+        # Main loop
         while self._running:
             try:
                 # print("looping")
@@ -282,6 +317,7 @@ class Server(QRunnable):
                 data, self.addr = self.Receive()
                 self.values = data.decode('UTF-8').split(" ")
                 self.Select()
+                               
                 self.ProMicro()
                 # time.sleep(0.2)
 
